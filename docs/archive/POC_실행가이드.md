@@ -1,4 +1,4 @@
-> ⚠️ 이 문서는 초기 기획/작업 기록입니다. 설계가 이후 변경되었으니 **최신 사용법은 [README](../README.md)** 를 참조하세요. (개인정보는 예시값으로 치환됨)
+> ⚠️ 이 문서는 초기 기획/작업 기록입니다. 설계가 이후 변경되었으니 **최신 사용법은 [README](../../README.md)** 를 참조하세요. (개인정보는 예시값으로 치환됨)
 
 # POC 실행 가이드 — 거래명세서 자동 발송
 
@@ -9,7 +9,7 @@
 > **출력 양식 = 기존 `거래명세서 양식.xlsx`의 파란 양식 그대로.** 스크립트는 그 양식의 `자료입력` 시트에
 > 값을 채우고, 수식으로 자동 렌더링된 `세금계산서양식`(파란 거래명세서)을 PDF로 내보낸다.
 
-소스: [gas/Code.gs](../gas/Code.gs) · [gas/Setup.gs](../gas/Setup.gs) · [gas/appsscript.json](../gas/appsscript.json)
+소스: [gas/Code.gs](../../gas/Code.gs) · [gas/Setup.gs](../../gas/Setup.gs) · [gas/appsscript.json](../../gas/appsscript.json)
 
 ---
 
@@ -33,8 +33,8 @@
 1. 상단 메뉴 **확장 프로그램 → Apps Script**
 2. (선택) 좌측 ⚙️ **프로젝트 설정 → "에디터에 appsscript.json 표시" 체크** → 매니페스트 붙여넣기
 3. 스크립트 파일 2개를 맞춘다:
-   - `Code.gs` ← [gas/Code.gs](../gas/Code.gs) 내용 전체 복사 → 붙여넣기
-   - `Setup.gs` ← `+` → 스크립트 추가, 이름 `Setup` → [gas/Setup.gs](../gas/Setup.gs) 내용 붙여넣기
+   - `Code.gs` ← [gas/Code.gs](../../gas/Code.gs) 내용 전체 복사 → 붙여넣기
+   - `Setup.gs` ← `+` → 스크립트 추가, 이름 `Setup` → [gas/Setup.gs](../../gas/Setup.gs) 내용 붙여넣기
 4. 💾 저장
 
 > 💡 `appsscript.json`은 안 건드려도 됩니다(첫 실행 때 권한 자동 요청).
