@@ -1,0 +1,49 @@
+# Windows 개발 환경에서 CRLF/LF 경고를 제거하기 위해 줄바꿈을 LF 로 통일한다.
+# 텍스트 파일은 작업 트리에서 LF, 저장소에도 LF 로 저장된다.
+
+* text=auto eol=lf
+
+# 명시적으로 LF 로 다뤄야 하는 소스 파일들
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.mdx       text eol=lf
+*.css       text eol=lf
+*.scss      text eol=lf
+*.html      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.sh        text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+.editorconfig  text eol=lf
+
+# Windows 전용 스크립트는 CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# 바이너리 (diff/merge 비대상)
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.avif      binary
+*.ico       binary
+*.svg       binary
+*.pdf       binary
+*.psd       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.zip       binary
+*.gz        binary

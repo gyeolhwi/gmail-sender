@@ -1,0 +1,58 @@
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 에디터 / IDE =====
+.vscode/
+.idea/
+.cursor/
+.claude/
+*.swp
+*~
+
+# ===== 도구 상태 (OMC 등) =====
+.omc/
+**/.omc/
+state/
+
+# ===== Python venv (실수 생성 방지) =====
+bin/
+include/
+lib/
+lib64/
+pyvenv.cfg
+
+# ===== 개인정보 · 생성물 (절대 푸시 금지) =====
+# capture/ : 실제 데이터가 찍힌 작업 스크린샷
+# *.pdf    : 생성된 거래명세서 PDF
+capture/
+*.pdf
+
+# ===== 외부 참고 레포 (로컬 전용) =====
+reference/
+
+# ===== Node / Next.js (사용 시) =====
+node_modules/
+.next/
+/out
+*.tsbuildinfo
+.pnpm-store/
+coverage/
+deploy.tar.gz
+
+# ===== Logs =====
+*.log
+
+# ===== Playwright =====
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# ===== Env (필요 시 주석 해제) =====
+# .env
+# .env.local
+
+# ===== 로컬 노트 / 자격증명 (필요 시 주석 해제) =====
+# CLAUDE.md
+# CREDENTIALS.md
