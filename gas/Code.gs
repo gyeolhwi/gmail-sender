@@ -143,12 +143,13 @@ function processCustomer(custId, items, config, customer, options) {
 function fillTemplate_(config, customer, items, billMonth) {
   var sh = sheet_(SHEETS.FORM);
 
-  sh.getRange(IN.SUP_NAME).setValue(config['공급자_상호'] || '');
-  sh.getRange(IN.SUP_REG).setValue(formatBizNo_(config['공급자_사업자번호']));
-  sh.getRange(IN.SUP_CEO).setValue(config['공급자_대표자'] || '');
-  sh.getRange(IN.SUP_ADDR).setValue(config['공급자_주소'] || '');
-  sh.getRange(IN.SUP_BIZ).setValue(config['공급자_업태'] || '');
-  sh.getRange(IN.SUP_ITEM).setValue(config['공급자_종목'] || '');
+  // 공급자 정보는 [설정] 참조 수식으로 연결 → 설정만 고치면 실시간 자동 반영 (사업자번호는 하이픈 포함으로 입력)
+  sh.getRange(IN.SUP_NAME).setFormula(configRef_('공급자_상호'));
+  sh.getRange(IN.SUP_REG).setFormula(configRef_('공급자_사업자번호'));
+  sh.getRange(IN.SUP_CEO).setFormula(configRef_('공급자_대표자'));
+  sh.getRange(IN.SUP_ADDR).setFormula(configRef_('공급자_주소'));
+  sh.getRange(IN.SUP_BIZ).setFormula(configRef_('공급자_업태'));
+  sh.getRange(IN.SUP_ITEM).setFormula(configRef_('공급자_종목'));
 
   sh.getRange(IN.RCV_NAME).setValue(customer.name || '');
   sh.getRange(IN.RCV_REG).setValue(formatBizNo_(customer.reg));
@@ -177,7 +178,31 @@ function fillTemplate_(config, customer, items, billMonth) {
   sh.getRange(IN.SUM_ROW, 8).setValue(s.vat);
   sh.getRange(IN.SUM_ROW, 9).setValue(s.total);
 
+  // 입금계좌: [설정]의 은행/계좌를 두 줄로 실시간 반영 (G21=은행명, G22=계좌번호+예금주)
+  sh.getRange('G21').setFormula(configRef_('공급자_은행'));
+  sh.getRange('G22').setFormula(configRef_('공급자_계좌'));
+
+  // 공급가액/세액을 자릿수 박스에 직접 기입 (원본 양식의 박스 수식 결함 우회)
+  writeDigitsRight_(sh, 15, 8, 11, s.supply);   // H15:R15 = 공급가액(백억~일)
+  writeDigitsRight_(sh, 15, 19, 10, s.vat);     // S15:AB15 = 세액(십억~일)
+
   SpreadsheetApp.flush();   // 수식 재계산 후 PDF 추출 보장
+}
+
+// [설정] 시트(키/값)의 값을 실시간으로 끌어오는 참조 수식 문자열 생성
+function configRef_(key) {
+  return '=IFERROR(VLOOKUP("' + key + '",\'' + SHEETS.CONFIG + '\'!$A:$B,2,0),"")';
+}
+
+// 금액을 오른쪽 정렬로 자릿수 칸(row, startCol부터 numCols칸)에 한 글자씩 기입. 남는 칸은 공백.
+function writeDigitsRight_(sh, row, startCol, numCols, value) {
+  var str = String(Math.round(Number(value) || 0));
+  var out = [];
+  for (var i = 0; i < numCols; i++) {
+    var ci = str.length - numCols + i;
+    out.push(ci >= 0 ? str.charAt(ci) : '');
+  }
+  sh.getRange(row, startCol, 1, numCols).setValues([out]);
 }
 
 // ===== 세금계산서양식 → PDF (원본 파란 양식 그대로) =============
@@ -198,9 +223,15 @@ function exportTemplateAsPdf_() {
 
 // ===== Drive 보관 ===============================================
 function archivePdf_(blob, config, billMonth) {
-  var root = getOrCreateFolder_(DriveApp.getRootFolder(), config['보관폴더명'] || '거래명세서_보관');
+  var base = sheetParentFolder_();   // 드라이브 루트 대신 '이 시트가 있는 폴더'
+  var root = getOrCreateFolder_(base, config['보관폴더명'] || '거래명세서_보관');
   var yearF = getOrCreateFolder_(root, billMonth.split('-')[0]);
   return getOrCreateFolder_(yearF, billMonth).createFile(blob).getUrl();
+}
+// 이 스프레드시트가 들어있는 폴더 반환 (없으면 루트)
+function sheetParentFolder_() {
+  var it = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId()).getParents();
+  return it.hasNext() ? it.next() : DriveApp.getRootFolder();
 }
 function getOrCreateFolder_(parent, name) {
   var it = parent.getFoldersByName(name);
@@ -212,7 +243,10 @@ function sendStatementMail_(recipient, customer, pdf, config, totals, billMonth,
   var map = {
     '청구월': billMonth, '담당자': customer.manager || customer.name, '상호': customer.name,
     '공급가액': won_(totals.supply), '세액': won_(totals.vat), '발행금액': won_(totals.total),
-    '공급자_상호': config['공급자_상호'] || '', '공급자_입금계좌': config['공급자_입금계좌'] || ''
+    '공급자_상호': config['공급자_상호'] || '',
+    '공급자_은행': config['공급자_은행'] || '', '공급자_계좌': config['공급자_계좌'] || '',
+    // 본문 {공급자_입금계좌} 토큰: 은행+계좌 자동합성(기존 본문 호환). 둘 다 없으면 옛 단일필드로 폴백.
+    '공급자_입금계좌': [config['공급자_은행'], config['공급자_계좌']].filter(function (x) { return x; }).join(' ') || (config['공급자_입금계좌'] || '')
   };
   var subject = (subjectPrefix || '') + replaceTokens_(config['메일_제목'] || '[{공급자_상호}] {청구월} 거래명세서', map);
   var body = replaceTokens_(config['메일_본문'] || '{청구월} 거래명세서를 첨부드립니다.', map);
