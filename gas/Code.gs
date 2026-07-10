@@ -88,7 +88,14 @@ function loadCustomers() {
   return map;
 }
 
-function loadTransactions() {
+// [설정]의 부가세율(%)을 소수로 반환. 값이 없으면 기본 10%(VAT_RATE). 0이면 부가세 없음.
+function vatRate_(config) {
+  var v = config && config['부가세율'];
+  return (v === '' || v == null) ? VAT_RATE : (Number(v) || 0) / 100;
+}
+
+function loadTransactions(config) {
+  var rate = vatRate_(config);
   var rows = sheet_(SHEETS.TX).getDataRange().getValues();
   var idx = headerIndex_(rows[0]);
   var list = [];
@@ -97,7 +104,7 @@ function loadTransactions() {
     if (!custId) continue;
     var qty = Number(rows[i][idx['수량']]) || 0;
     var price = Number(rows[i][idx['단가']]) || 0;
-    var supply = qty * price, vat = Math.round(supply * VAT_RATE);
+    var supply = qty * price, vat = Math.round(supply * rate);
     list.push({
       row: i + 1, custId: custId, billMonth: normMonth_(rows[i][idx['청구월']]),
       date: rows[i][idx['거래일자']], item: rows[i][idx['품목']], spec: rows[i][idx['규격']],
@@ -217,8 +224,17 @@ function exportTemplateAsPdf_() {
     + '&pagenumbers=false&fzr=false'
     + '&top_margin=0.3&bottom_margin=0.3&left_margin=0.3&right_margin=0.3'
     + '&range=A1:AG24';
-  var resp = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } });
-  return resp.getBlob();
+  var params = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+  var lastCode = 0;
+  // export 엔드포인트는 연속 호출 시 429(속도 제한)를 내므로 지수 백오프로 재시도 (1→2→4→8→16→30초)
+  for (var attempt = 0; attempt < 6; attempt++) {
+    var resp = UrlFetchApp.fetch(url, params);
+    lastCode = resp.getResponseCode();
+    if (lastCode === 200) return resp.getBlob();
+    if (lastCode === 429 || lastCode >= 500) { Utilities.sleep(Math.min(30000, 1000 * Math.pow(2, attempt))); continue; }
+    throw new Error('PDF 내보내기 실패 (HTTP ' + lastCode + ')');   // 4xx 등은 즉시 실패
+  }
+  throw new Error('PDF 내보내기 실패 — 재시도 후에도 HTTP ' + lastCode + ' (속도 제한, 잠시 후 다시 시도하세요)');
 }
 
 // ===== Drive 보관 ===============================================
@@ -273,7 +289,7 @@ function runPOC() {
   var config = getConfig();
   var customers = loadCustomers();
   var billMonth = currentBillMonth_(config);
-  var groups = groupByCustomer(loadTransactions(), billMonth, false);
+  var groups = groupByCustomer(loadTransactions(config), billMonth, false);
 
   var ids = Object.keys(groups);
   if (!ids.length) { alert_('당월(' + billMonth + ') 거래내역이 없습니다. 먼저 거래내역을 입력하세요.'); return; }
@@ -311,7 +327,7 @@ function runBulkTest() {
       reg: i + '11-11-1111' + i, ceo: '김테스터' + i, addr: '서울 강남구 테헤란로 ' + (i * 100) + '길 ' + i,
       biz: '도소매', item: '전자상거래', fileRule: '', send: true
     };
-    var qty = i, price = 10000 + i * 5000, supply = qty * price, vat = Math.round(supply * VAT_RATE);
+    var qty = i, price = 10000 + i * 5000, supply = qty * price, vat = Math.round(supply * vatRate_(config));
     var items = [{
       billMonth: billMonth, date: billMonth + '-10', item: '테스트 상품 ' + i, spec: 'EA',
       qty: qty, price: price, supply: supply, vat: vat, total: supply + vat
@@ -340,7 +356,7 @@ function previewMonthly() {
   generateMonthlyCore_(config);   // 정기항목 → 거래내역 자동 채움
   var customers = loadCustomers();
   var billMonth = currentBillMonth_(config);
-  var groups = groupByCustomer(loadTransactions(), billMonth, true);
+  var groups = groupByCustomer(loadTransactions(config), billMonth, true);
   var ids = Object.keys(groups);
   if (!ids.length) { alert_('당월(' + billMonth + ') 미발송 건이 없습니다.'); return; }
 
@@ -364,7 +380,7 @@ function runMonthlyConfirm() {
   generateMonthlyCore_(config);   // 정기항목 → 거래내역 자동 채움
   var customers = loadCustomers();
   var billMonth = currentBillMonth_(config);
-  var groups = groupByCustomer(loadTransactions(), billMonth, true);
+  var groups = groupByCustomer(loadTransactions(config), billMonth, true);
   var ids = Object.keys(groups);
   if (!ids.length) { alert_('당월(' + billMonth + ') 발송할 미발송 건이 없습니다.'); return; }
 
@@ -392,7 +408,7 @@ function runMonthly() {
   generateMonthlyCore_(config);   // 자동발송도 정기항목 → 거래내역 자동 채움
   var customers = loadCustomers();
   var billMonth = currentBillMonth_(config);
-  var groups = groupByCustomer(loadTransactions(), billMonth, true);
+  var groups = groupByCustomer(loadTransactions(config), billMonth, true);
 
   var ids = Object.keys(groups);
   var ok = 0, fail = 0, skip = 0;
@@ -534,7 +550,7 @@ function runAutoSendTest_() {
   try {
     generateMonthlyCore_(config);
     var customers = loadCustomers();
-    var groups = groupByCustomer(loadTransactions(), billMonth, true);
+    var groups = groupByCustomer(loadTransactions(config), billMonth, true);
     var ids = Object.keys(groups), done = false;
     for (var i = 0; i < ids.length && !done; i++) {
       var c = customers[ids[i]];

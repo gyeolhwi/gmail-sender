@@ -25,6 +25,7 @@ function setupUpgrades() {
   var txSh = ss.getSheetByName(SHEETS.TX);
   if (txSh) { applyCustomerDropdown_(txSh, 1); applyStatusDropdown_(txSh); setupTxFormulas_(txSh, 2, 299); }
   if (getConfig()['발송시각'] === undefined) setConfigValue_('발송시각', 9);  // 기존 설정에 없으면 추가
+  if (getConfig()['부가세율'] === undefined) setConfigValue_('부가세율', 0);   // 부가세율(%) 없으면 추가 (0=부가세 없음)
   applyConfigValidation_();   // 발송일/발송시각 등 입력 형식(드롭다운) 강제
   unifyToOneSheet();   // 자료입력 남아있으면 한 시트로 통합 (이미 통합됐으면 무시)
   reorderSheets_();
@@ -117,6 +118,7 @@ function seedConfig_() {
     ['공급자_종목', '소프트웨어 개발'],
     ['공급자_은행', '○○은행'],                          // ← 은행명 (양식 합계금액 우측 윗줄)
     ['공급자_계좌', '000-00-000000 홍길동'],             // ← 계좌번호 + 예금주 (양식 아랫줄)
+    ['부가세율', 0],                                    // ← 부가세율(%) : 0=부가세 없음, 10=10% (거래명세서 세액 계산)
     ['발송일', 10],
     ['발송시각', 9],
     ['청구월_기준', '당월'],
@@ -232,7 +234,7 @@ function setupTxFormulas_(sh, startRow, count) {
   for (var k = 0; k < count; k++) {
     var r = startRow + k;
     f.push(['=IF($F' + r + '="","",$F' + r + '*$G' + r + ')',
-            '=IF($H' + r + '="","",ROUND($H' + r + '*0.1,0))',
+            '=IF($H' + r + '="","",ROUND($H' + r + '*IFERROR(VLOOKUP("부가세율",설정!$A:$B,2,0),10)/100,0))',
             '=IF($H' + r + '="","",$H' + r + '+$I' + r + ')']);
   }
   sh.getRange(startRow, 8, count, 3).setFormulas(f);
