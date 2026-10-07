@@ -58,3 +58,6 @@ test-results/
 # ===== 로컬 노트 / 자격증명 (필요 시 주석 해제) =====
 # CLAUDE.md
 # CREDENTIALS.md
+
+# ===== clasp (개인 scriptId) =====
+.clasp.json
